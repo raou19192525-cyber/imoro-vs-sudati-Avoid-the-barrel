@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JUNGLE SURVIVAL ONLINE</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #062601; font-family: 'Arial Black', sans-serif; touch-action: none; }
+        .glass-ui { background: rgba(0, 40, 0, 0.7); backdrop-filter: blur(8px); border: 2px solid #FFD700; border-radius: 15px; color: #fff; text-shadow: 2px 2px 4px #000; }
+        #ui { position: absolute; top: 10px; left: 10px; padding: 15px; z-index: 10; border-left: 8px solid #FFD700; }
+        #ranking-board { position: absolute; top: 10px; right: 10px; padding: 15px; min-width: 200px; z-index: 10; box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
+        .rank-title { color: #FFD700; text-align: center; font-size: 1.2em; margin-bottom: 8px; border-bottom: 2px dashed #FFD700; }
+        #rank-list div { display: flex; justify-content: space-between; gap: 10px; margin: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        #controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-around; padding: 0 20px; box-sizing: border-box; z-index: 100; }
+        .ctrl-btn { width: 85px; height: 85px; border-radius: 50%; background: rgba(255,255,255,0.2); border: 3px solid #fff; color: white; font-size: 32px; display: flex; align-items: center; justify-content: center; user-select: none; }
+        #jump-btn { width: 110px; height: 110px; background: rgba(255, 215, 0, 0.4); border-color: #FFD700; font-weight: bold; }
+        #overlay, #gameover-screen { position: absolute; inset: 0; background: rgba(0,10,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
+        button.main-btn { background: linear-gradient(to bottom, #FFD700, #B8860B); border: none; padding: 20px 60px; font-size: 28px; color: #000; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 5px 0 #5e4a06; }
+    </style>
+</head>
+<body>
+    <div id="overlay">
+        <h1 style="color:#FFD700; font-size:42px; text-align:center; margin-bottom:10px;">JUNGLE SURVIVAL</h1>
+        <p id="welcome-msg" style="color:#fff; margin-bottom:30px;">世界ランキングに挑め！</p>
+        <button id="start-btn" class="main-btn">探索開始！</button>
+    </div>
+
+    <div id="ui" class="glass-ui">
+        <div style="font-size:0.8em; color:#FFD700;">LIVE SCORE</div>
+        <div id="score-val" style="font-size:2.2em;">0</div>
+    </div>
+
+    <div id="ranking-board" class="glass-ui">
+        <div class="rank-title">🏆 WORLD RANKING</div>
+        <div id="rank-list"></div>
+    </div>
+
+    <div id="controls">
+        <div id="left-btn" class="ctrl-btn">←</div>
+        <div id="jump-btn" class="ctrl-btn">JUMP</div>
+        <div id="right-btn" class="ctrl-btn">→</div>
+    </div>
+
+    <div id="gameover-screen" style="display:none;">
+        <h2 id="msg-title" style="font-size:48px; color:#FFD700;">RESULT</h2>
+        <div id="final-stats" style="color:white; font-size:26px; margin-bottom:30px;"></div>
+        <button onclick="location.reload()" class="main-btn">RETRY</button>
+    </div>
+
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+
+        const bgm = new Audio('それゆけワンダーランド.wav'); bgm.loop = true; bgm.volume = 0.35;
+        const sfxGong = new Audio('試合開始のゴング.mp3');
+        const sfxJump = new Audio('ぷよん.mp3');
+        const sfxWin = new Audio('シャキーン1.mp3');
+        const sfxLose = new Audio('チーン1.mp3');
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a2205);
+        scene.fog = new THREE.Fog(0x0a2205, 500, 3000);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 4000);
+        camera.position.set(0, 550, 1000); camera.lookAt(0, 100, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        scene.add(new THREE.AmbientLight(0xffffff, 2.2));
+        const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+        sun.position.set(200, 1000, 500); sun.castShadow = true;
+        scene.add(sun);
+
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(700, 4000), new THREE.MeshStandardMaterial({ color: 0x1a4a1a }));
+        ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
+        scene.add(ground);
+
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x2e3b23 });
+        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(40, 300, 4000), wallMat);
+        leftWall.position.set(-370, 150, 0); scene.add(leftWall);
+        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(40, 300, 4000), wallMat);
+        rightWall.position.set(370, 150, 0); scene.add(rightWall);
+
+        const loader = new FBXLoader();
+        const clock = new THREE.Clock();
+        let barrels = [], characters = { imoro: null, sudachi: null };
+        let isStarted = false, isGameOver = false, startTime = 0;
+        const keys = {};
+
+        // ニックネーム管理
+        let playerName = localStorage.getItem('jungle_player_name');
+        if (playerName) {
+            document.getElementById('welcome-msg').innerText = `おかえり、${playerName}！`;
+        }
+
+        class Character {
+            constructor(name, stopPath, walkPath, startX, isAI = false) {
+                this.name = name; this.isAI = isAI; this.isDead = false;
+                this.models = {}; this.mixers = {}; this.activeModel = null;
+                this.velY = 0; this.isJumping = false;
+                this.load(stopPath, walkPath, startX);
+            }
+            async load(stopP, walkP, x) {
+                const f = (p) => new Promise(r => loader.load(p, m => {
+                    const b = new THREE.Box3().setFromObject(m);
+                    const s = (100 / b.getSize(new THREE.Vector3()).length()) * 1.5;
+                    m.scale.set(s, s, s); m.visible = false;
+                    m.traverse(n => { if(n.isMesh) n.castShadow = true; });
+                    scene.add(m); r({ m, mx: new THREE.AnimationMixer(m) });
+                }));
+                const [s, w] = await Promise.all([f(stopP), f(walkP)]);
+                this.models = { stop: s.m, walk: w.m }; this.mixers = { stop: s.mx, walk: w.mx };
+                this.activeModel = this.models.stop; this.activeModel.visible = true;
+                this.activeModel.position.set(x, 0, 300);
+                if(s.m.animations[0]) this.mixers.stop.clipAction(s.m.animations[0]).play();
+                if(w.m.animations[0]) this.mixers.walk.clipAction(w.m.animations[0]).play();
+                characters[this.name] = this;
+            }
+            update(delta) {
+                if (!this.activeModel || this.isDead) return;
+                let move = false, tx = this.activeModel.position.x, trot = 0;
+                const speed = 700 * delta;
+                
+                if (this.isAI) {
+                    let dx = null, mz = 800, shouldJump = false;
+                    barrels.forEach(b => { 
+                        const dz = this.activeModel.position.z - b.mesh.position.z;
+                        if(dz > 0 && dz < mz){ mz = dz; dx = b.mesh.position.x; }
+                        if(dz > 120 && dz < 400 && Math.abs(tx - b.mesh.position.x) < 140) shouldJump = true;
+                    });
+                    if(dx !== null && Math.abs(tx - dx) < 180){ tx += (tx < dx ? -speed : speed); move = true; }
+                    else if(Math.abs(tx) > 20){ tx += (tx > 0 ? -speed*0.5 : speed*0.5); move = true; }
+                    trot = (tx > this.activeModel.position.x) ? Math.PI/2 : -Math.PI/2;
+                    if(shouldJump && !this.isJumping) {
+                        this.velY = 13.5; this.isJumping = true;
+                        const jSound = sfxJump.cloneNode(); jSound.volume = 0.2; jSound.play();
+                    }
+                } else {
+                    if(keys['Left']){ tx -= speed; trot = -Math.PI/2; move = true; }
+                    if(keys['Right']){ tx += speed; trot = Math.PI/2; move = true; }
+                    if(keys['Jump'] && !this.isJumping){ 
+                        this.velY = 13.5; this.isJumping = true;
+                        sfxJump.currentTime = 0; sfxJump.play();
+                    }
+                }
+                tx = Math.max(-330, Math.min(330, tx));
+                this.activeModel.position.x = tx;
+                this.activeModel.rotation.y += (trot - this.activeModel.rotation.y) * 0.2;
+                this.activeModel.position.y += this.velY * delta * 60; 
+                this.velY -= 0.8 * delta * 60; 
+                if(this.activeModel.position.y <= 0){ this.activeModel.position.y = 0; this.velY = 0; this.isJumping = false; }
+                
+                const target = move ? this.models.walk : this.models.stop;
+                if(this.activeModel !== target){
+                    target.position.copy(this.activeModel.position);
+                    target.rotation.y = this.activeModel.rotation.y;
+                    this.activeModel.visible = false; this.activeModel = target; this.activeModel.visible = true;
+                }
+                this.mixers.stop.update(delta); this.mixers.walk.update(delta);
+            }
+        }
+
+        new Character('imoro', '新イモロー(止).fbx', '新イモローアニメーション（歩）.fbx', -120);
+        new Character('sudachi', 'すだちくん前の(止).fbx', 'すだちくん前の（動）2.fbx', 120, true);
+
+        function spawn() {
+            if(!isStarted || isGameOver) return;
+            loader.load('タル横.fbx', f => {
+                const isHuge = Math.random() < 0.28;
+                const b = new THREE.Box3().setFromObject(f);
+                const s = (100 / b.getSize(new THREE.Vector3()).length()) * (isHuge ? 2.3 : 1.0);
+                f.scale.set(s, s, s);
+                let x = (Math.random()-0.5)*600;
+                f.position.set(Math.max(-320, Math.min(320, x)), isHuge ? 75 : 50, -2000);
+                scene.add(f);
+                const score = Math.floor((Date.now() - startTime)/1000);
+                barrels.push({ mesh: f, speed: 18 + (score/4), isHuge });
+            });
+            setTimeout(spawn, Math.max(150, 950 - (Date.now() - startTime)/120));
+        }
+
+        function loop() {
+            requestAnimationFrame(loop);
+            if(!isStarted || isGameOver) return;
+            const delta = clock.getDelta();
+            const score = Math.floor((Date.now() - startTime)/1000);
+            document.getElementById('score-val').innerText = score;
+
+            Object.values(characters).forEach(c => c && c.update(delta));
+
+            for(let i = barrels.length-1; i>=0; i--){
+                const b = barrels[i]; b.mesh.position.z += b.speed * delta * 60;
+                b.mesh.rotation.x += 0.12 * delta * 60;
+                const bBox = new THREE.Box3().setFromObject(b.mesh).expandByScalar(-10);
+                Object.values(characters).forEach(c => {
+                    if(c && !c.isDead && c.activeModel){
+                        const cBox = new THREE.Box3().setFromObject(c.activeModel).expandByScalar(-15);
+                        if(cBox.intersectsBox(bBox)){
+                            if(c.name === 'imoro') endGame(score);
+                            else { c.isDead = true; c.activeModel.visible = false; }
+                        }
+                    }
+                });
+                if(b.mesh.position.z > 1200){ scene.remove(b.mesh); barrels.splice(i, 1); }
+            }
+            renderer.render(scene, camera);
+        }
+
+        async function endGame(score) {
+            isGameOver = true; bgm.pause();
+            const win = characters.sudachi.isDead;
+            if(win) sfxWin.play(); else sfxLose.play();
+            
+            document.getElementById('gameover-screen').style.display = 'flex';
+            document.getElementById('msg-title').innerText = win ? "すだちくんに勝利" : "すだちくんに敗北";
+            document.getElementById('final-stats').innerText = `最終スコア: ${score}`;
+            
+            // ランキング更新ロジック（名前付き）
+            let ranks = JSON.parse(localStorage.getItem('jungle_online_ranks') || '[]');
+            ranks.push({ 
+                name: playerName || "名無しの冒険者", 
+                score, 
+                date: new Date().toLocaleDateString() 
+            });
+            ranks.sort((a,b) => b.score - a.score);
+            localStorage.setItem('jungle_online_ranks', JSON.stringify(ranks.slice(0,10)));
+            updateRanks();
+        }
+
+        const handleInput = (type, state) => { keys[type] = state; };
+        window.addEventListener('keydown', e => {
+            if(['ArrowLeft','KeyA'].includes(e.code)) handleInput('Left', true);
+            if(['ArrowRight','KeyD'].includes(e.code)) handleInput('Right', true);
+            if(['ArrowUp','KeyW','Space'].includes(e.code)) handleInput('Jump', true);
+        });
+        window.addEventListener('keyup', e => {
+            if(['ArrowLeft','KeyA'].includes(e.code)) handleInput('Left', false);
+            if(['ArrowRight','KeyD'].includes(e.code)) handleInput('Right', false);
+            if(['ArrowUp','KeyW','Space'].includes(e.code)) handleInput('Jump', false);
+        });
+        const btnMap = { 'left-btn':'Left', 'right-btn':'Right', 'jump-btn':'Jump' };
+        Object.keys(btnMap).forEach(id => {
+            const el = document.getElementById(id);
+            el.ontouchstart = (e) => { e.preventDefault(); handleInput(btnMap[id], true); };
+            el.ontouchend = () => handleInput(btnMap[id], false);
+        });
+
+        // スタートボタン処理の変更
+        document.getElementById('start-btn').onclick = () => {
+            // 名前が保存されていない場合のみ入力
+            if (!playerName) {
+                const input = prompt("ランキング用のニックネームを入力してください：", "冒険者");
+                playerName = input ? input.substring(0, 10) : "冒険者";
+                localStorage.setItem('jungle_player_name', playerName);
+            }
+
+            document.getElementById('overlay').style.display = 'none';
+            isStarted = true; startTime = Date.now();
+            bgm.play(); sfxGong.play(); spawn(); loop();
+        };
+
+        const updateRanks = () => {
+            const ranks = JSON.parse(localStorage.getItem('jungle_online_ranks') || '[]');
+            document.getElementById('rank-list').innerHTML = ranks.map((r,i) => 
+                `<div>
+                    <span>${i+1}位 ${r.name || '???'}</span>
+                    <span>${r.score} pts</span>
+                </div>`).join('') || "冒険者求む";
+        };
+        updateRanks();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
