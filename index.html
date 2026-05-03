@@ -95,7 +95,6 @@
         let isStarted = false, isGameOver = false, startTime = 0;
         const keys = {};
 
-        // ニックネーム管理
         let playerName = localStorage.getItem('jungle_player_name');
         if (playerName) {
             document.getElementById('welcome-msg').innerText = `おかえり、${playerName}！`;
@@ -199,7 +198,8 @@
             for(let i = barrels.length-1; i>=0; i--){
                 const b = barrels[i]; b.mesh.position.z += b.speed * delta * 60;
                 b.mesh.rotation.x += 0.12 * delta * 60;
-                const bBox = new THREE.Box3().setFromObject(b.mesh).expandByScalar(-10);
+                // タルの当たり判定を少し大きく修正
+                const bBox = new THREE.Box3().setFromObject(b.mesh); 
                 Object.values(characters).forEach(c => {
                     if(c && !c.isDead && c.activeModel){
                         const cBox = new THREE.Box3().setFromObject(c.activeModel).expandByScalar(-15);
@@ -223,7 +223,6 @@
             document.getElementById('msg-title').innerText = win ? "すだちくんに勝利" : "すだちくんに敗北";
             document.getElementById('final-stats').innerText = `最終スコア: ${score}`;
             
-            // ランキング更新ロジック（名前付き）
             let ranks = JSON.parse(localStorage.getItem('jungle_online_ranks') || '[]');
             ranks.push({ 
                 name: playerName || "名無しの冒険者", 
@@ -253,15 +252,12 @@
             el.ontouchend = () => handleInput(btnMap[id], false);
         });
 
-        // スタートボタン処理の変更
         document.getElementById('start-btn').onclick = () => {
-            // 名前が保存されていない場合のみ入力
             if (!playerName) {
                 const input = prompt("ランキング用のニックネームを入力してください：", "冒険者");
                 playerName = input ? input.substring(0, 10) : "冒険者";
                 localStorage.setItem('jungle_player_name', playerName);
             }
-
             document.getElementById('overlay').style.display = 'none';
             isStarted = true; startTime = Date.now();
             bgm.play(); sfxGong.play(); spawn(); loop();
