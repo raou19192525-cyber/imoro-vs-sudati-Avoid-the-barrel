@@ -7,31 +7,64 @@
     <style>
         body { margin: 0; overflow: hidden; background-color: #062601; font-family: 'Arial Black', sans-serif; touch-action: none; }
         .glass-ui { background: rgba(0, 40, 0, 0.7); backdrop-filter: blur(8px); border: 2px solid #FFD700; border-radius: 15px; color: #fff; text-shadow: 2px 2px 4px #000; }
-        #ui { position: absolute; top: 10px; left: 10px; padding: 15px; z-index: 10; border-left: 8px solid #FFD700; }
-        #ranking-board { position: absolute; top: 10px; right: 10px; padding: 15px; min-width: 200px; z-index: 10; box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); }
-        .rank-title { color: #FFD700; text-align: center; font-size: 1.2em; margin-bottom: 8px; border-bottom: 2px dashed #FFD700; }
-        #rank-list div { display: flex; justify-content: space-between; gap: 10px; margin: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        #controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-around; padding: 0 20px; box-sizing: border-box; z-index: 100; }
-        .ctrl-btn { width: 85px; height: 85px; border-radius: 50%; background: rgba(255,255,255,0.2); border: 3px solid #fff; color: white; font-size: 32px; display: flex; align-items: center; justify-content: center; user-select: none; }
-        #jump-btn { width: 110px; height: 110px; background: rgba(255, 215, 0, 0.4); border-color: #FFD700; font-weight: bold; }
-        #overlay, #gameover-screen { position: absolute; inset: 0; background: rgba(0,10,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
-        button.main-btn { background: linear-gradient(to bottom, #FFD700, #B8860B); border: none; padding: 20px 60px; font-size: 28px; color: #000; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 5px 0 #5e4a06; }
+        
+        /* UIレイアウト調整 */
+        #ui { position: absolute; top: 10px; left: 10px; padding: 10px 15px; z-index: 10; border-left: 5px solid #FFD700; }
+        #ranking-board { position: absolute; top: 10px; right: 10px; padding: 10px; min-width: 140px; z-index: 10; font-size: 0.85em; }
+        
+        #controls { 
+            position: absolute; 
+            bottom: 5%; 
+            width: 100%; 
+            display: flex; 
+            justify-content: space-around; 
+            align-items: center;
+            padding: 0 10px; 
+            box-sizing: border-box; 
+            z-index: 100; 
+        }
+        
+        .ctrl-btn { 
+            width: 70px; 
+            height: 70px; 
+            border-radius: 50%; 
+            background: rgba(255,255,255,0.2); 
+            border: 3px solid #fff; 
+            color: white; 
+            font-size: 28px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            user-select: none; 
+        }
+        
+        #jump-btn { width: 90px; height: 90px; background: rgba(255, 215, 0, 0.4); border-color: #FFD700; font-weight: bold; }
+
+        /* 縦画面用微調整 */
+        @media screen and (max-aspect-ratio: 1/1) {
+            #ranking-board { display: none; } /* 縦画面ではランキングを隠して視界を確保（任意） */
+            .ctrl-btn { width: 60px; height: 60px; font-size: 24px; }
+            #jump-btn { width: 80px; height: 80px; }
+        }
+
+        #overlay, #gameover-screen { position: absolute; inset: 0; background: rgba(0,10,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; padding: 20px; text-align: center; }
+        button.main-btn { background: linear-gradient(to bottom, #FFD700, #B8860B); border: none; padding: 15px 40px; font-size: 24px; color: #000; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 5px 0 #5e4a06; }
     </style>
 </head>
 <body>
     <div id="overlay">
-        <h1 style="color:#FFD700; font-size:42px; text-align:center; margin-bottom:10px;">JUNGLE SURVIVAL</h1>
+        <h1 style="color:#FFD700; font-size:32px; margin-bottom:10px;">JUNGLE SURVIVAL</h1>
         <p id="welcome-msg" style="color:#fff; margin-bottom:30px;">世界ランキングに挑め！</p>
         <button id="start-btn" class="main-btn">探索開始！</button>
     </div>
 
     <div id="ui" class="glass-ui">
-        <div style="font-size:0.8em; color:#FFD700;">LIVE SCORE</div>
-        <div id="score-val" style="font-size:2.2em;">0</div>
+        <div style="font-size:0.7em; color:#FFD700;">SCORE</div>
+        <div id="score-val" style="font-size:1.8em;">0</div>
     </div>
 
     <div id="ranking-board" class="glass-ui">
-        <div class="rank-title">🏆 WORLD RANKING</div>
+        <div class="rank-title">🏆 RANKING</div>
         <div id="rank-list"></div>
     </div>
 
@@ -42,8 +75,8 @@
     </div>
 
     <div id="gameover-screen" style="display:none;">
-        <h2 id="msg-title" style="font-size:48px; color:#FFD700;">RESULT</h2>
-        <div id="final-stats" style="color:white; font-size:26px; margin-bottom:30px;"></div>
+        <h2 id="msg-title" style="font-size:36px; color:#FFD700;">RESULT</h2>
+        <div id="final-stats" style="color:white; font-size:22px; margin-bottom:30px;"></div>
         <button onclick="location.reload()" class="main-btn">RETRY</button>
     </div>
 
@@ -63,10 +96,24 @@
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a2205);
-        scene.fog = new THREE.Fog(0x0a2205, 500, 3000);
+        scene.fog = new THREE.Fog(0x0a2205, 500, 4000);
 
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 4000);
-        camera.position.set(0, 550, 1000); camera.lookAt(0, 100, 0);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 5000);
+        
+        // レスポンシブなカメラ位置設定
+        function updateCamera() {
+            const aspect = window.innerWidth / window.innerHeight;
+            if (aspect < 1) { // 縦画面
+                camera.position.set(0, 800, 1500); 
+                camera.fov = 55;
+            } else { // 横画面
+                camera.position.set(0, 550, 1000);
+                camera.fov = 45;
+            }
+            camera.lookAt(0, 100, 0);
+            camera.updateProjectionMatrix();
+        }
+        updateCamera();
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -79,15 +126,15 @@
         sun.position.set(200, 1000, 500); sun.castShadow = true;
         scene.add(sun);
 
-        const ground = new THREE.Mesh(new THREE.PlaneGeometry(700, 4000), new THREE.MeshStandardMaterial({ color: 0x1a4a1a }));
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(800, 8000), new THREE.MeshStandardMaterial({ color: 0x1a4a1a }));
         ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
         scene.add(ground);
 
         const wallMat = new THREE.MeshStandardMaterial({ color: 0x2e3b23 });
-        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(40, 300, 4000), wallMat);
-        leftWall.position.set(-370, 150, 0); scene.add(leftWall);
-        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(40, 300, 4000), wallMat);
-        rightWall.position.set(370, 150, 0); scene.add(rightWall);
+        const leftWall = new THREE.Mesh(new THREE.BoxGeometry(40, 300, 8000), wallMat);
+        leftWall.position.set(-400, 150, 0); scene.add(leftWall);
+        const rightWall = new THREE.Mesh(new THREE.BoxGeometry(40, 300, 8000), wallMat);
+        rightWall.position.set(400, 150, 0); scene.add(rightWall);
 
         const loader = new FBXLoader();
         const clock = new THREE.Clock();
@@ -150,7 +197,7 @@
                         sfxJump.currentTime = 0; sfxJump.play();
                     }
                 }
-                tx = Math.max(-330, Math.min(330, tx));
+                tx = Math.max(-360, Math.min(360, tx));
                 this.activeModel.position.x = tx;
                 this.activeModel.rotation.y += (trot - this.activeModel.rotation.y) * 0.2;
                 this.activeModel.position.y += this.velY * delta * 60; 
@@ -177,11 +224,11 @@
                 const b = new THREE.Box3().setFromObject(f);
                 const s = (100 / b.getSize(new THREE.Vector3()).length()) * (isHuge ? 2.3 : 1.0);
                 f.scale.set(s, s, s);
-                let x = (Math.random()-0.5)*600;
-                f.position.set(Math.max(-320, Math.min(320, x)), isHuge ? 75 : 50, -2000);
+                let x = (Math.random()-0.5)*700;
+                f.position.set(Math.max(-360, Math.min(360, x)), isHuge ? 75 : 50, -3000);
                 scene.add(f);
                 const score = Math.floor((Date.now() - startTime)/1000);
-                barrels.push({ mesh: f, speed: 18 + (score/4), isHuge });
+                barrels.push({ mesh: f, speed: 20 + (score/4), isHuge });
             });
             setTimeout(spawn, Math.max(150, 950 - (Date.now() - startTime)/120));
         }
@@ -198,7 +245,6 @@
             for(let i = barrels.length-1; i>=0; i--){
                 const b = barrels[i]; b.mesh.position.z += b.speed * delta * 60;
                 b.mesh.rotation.x += 0.12 * delta * 60;
-                // タルの当たり判定を少し大きく修正
                 const bBox = new THREE.Box3().setFromObject(b.mesh); 
                 Object.values(characters).forEach(c => {
                     if(c && !c.isDead && c.activeModel){
@@ -209,7 +255,7 @@
                         }
                     }
                 });
-                if(b.mesh.position.z > 1200){ scene.remove(b.mesh); barrels.splice(i, 1); }
+                if(b.mesh.position.z > 1500){ scene.remove(b.mesh); barrels.splice(i, 1); }
             }
             renderer.render(scene, camera);
         }
@@ -245,16 +291,17 @@
             if(['ArrowRight','KeyD'].includes(e.code)) handleInput('Right', false);
             if(['ArrowUp','KeyW','Space'].includes(e.code)) handleInput('Jump', false);
         });
+
         const btnMap = { 'left-btn':'Left', 'right-btn':'Right', 'jump-btn':'Jump' };
         Object.keys(btnMap).forEach(id => {
             const el = document.getElementById(id);
-            el.ontouchstart = (e) => { e.preventDefault(); handleInput(btnMap[id], true); };
-            el.ontouchend = () => handleInput(btnMap[id], false);
+            el.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(btnMap[id], true); }, {passive: false});
+            el.addEventListener('touchend', (e) => { e.preventDefault(); handleInput(btnMap[id], false); }, {passive: false});
         });
 
         document.getElementById('start-btn').onclick = () => {
             if (!playerName) {
-                const input = prompt("ランキング用のニックネームを入力してください：", "冒険者");
+                const input = prompt("ニックネームを入力（最大10文字）：", "冒険者");
                 playerName = input ? input.substring(0, 10) : "冒険者";
                 localStorage.setItem('jungle_player_name', playerName);
             }
@@ -266,16 +313,13 @@
         const updateRanks = () => {
             const ranks = JSON.parse(localStorage.getItem('jungle_online_ranks') || '[]');
             document.getElementById('rank-list').innerHTML = ranks.map((r,i) => 
-                `<div>
-                    <span>${i+1}位 ${r.name || '???'}</span>
-                    <span>${r.score} pts</span>
-                </div>`).join('') || "冒険者求む";
+                `<div><span>${i+1}.${r.name}</span><span>${r.score}</span></div>`).join('') || "NO DATA";
         };
         updateRanks();
 
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            updateCamera();
         });
     </script>
 </body>
